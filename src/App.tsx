@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "react-query";
 //components
 import Product from "./products/products";
+import Cart from "./Cart/Cart";
 //@materialUI components
 import logo from "./logo.svg";
 import Drawer from "@mui/material/Drawer";
@@ -14,7 +15,7 @@ import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import { Wrapper, StyledButton } from "./App.styles";
 //types
 export type CartItemType = {
-  id: string;
+  id: number;
   category: string;
   price: number;
   title: string;
@@ -26,14 +27,6 @@ export type CartItemType = {
 const getProduct = async (): Promise<CartItemType[]> =>
   await (await fetch("http://fakestoreapi.com/products")).json();
 
-const handleAddToCart = (selectedItem: CartItemType) => {
-  return null;
-};
-
-const getTotalItems = (items: CartItemType[]) => {
-  return items.reduce((acc: number, items) => acc + items.amount, 0);
-};
-
 const App = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartProducts, setCartProducts] = useState([] as CartItemType[]);
@@ -42,18 +35,55 @@ const App = () => {
     getProduct
   );
   console.log(data);
+  const handleAddToCart = (selectedItem: CartItemType) => {
+    setCartProducts(previous => {
+      //check whether item is in the cart
+      // if in cart add the item number
+      const isItemInCart = previous.find((item) => item.id === selectedItem.id);
+
+      if (isItemInCart) {
+        return previous.map((item) =>
+          item.id === selectedItem.id
+            ? { ...item, amount: item.amount + 1 }
+            : item
+        );
+      }
+      //when item is first added
+
+      return [...previous, { ...selectedItem, amount: 1 }];
+    });
+  };
+  const handleRemoveFromCart = (id: number) => {
+    setCartProducts(previous =>
+      previous.reduce((acc, item) => {
+        if (item.id === id) {
+          if (item.amount === 1) return acc;
+          return [...acc, { ...item, amount: item.amount - 1 }];
+        } else {
+          return [...acc, item];
+        }
+      }, [] as CartItemType[])
+    );
+  };
+
+  const getTotalItems = (items: CartItemType[]) => {
+    return items.reduce((acc: number, items) => acc + items.amount, 0);
+  };
 
   if (isLoading) {
     return <LinearProgress />;
   }
   if (error) {
     return <div>Something went wrong</div>;
-    console.log(error);
   }
   return (
     <Wrapper>
       <Drawer anchor="right" open={cartOpen} onClose={() => setCartOpen(false)}>
-        Cartr goes here
+        <Cart
+          cartItems={cartProducts}
+          addToCart={handleAddToCart}
+          removeFromCart={handleRemoveFromCart}
+        />
       </Drawer>
       <StyledButton onClick={() => setCartOpen(true)}>
         <Badge badgeContent={getTotalItems(cartProducts)}>
